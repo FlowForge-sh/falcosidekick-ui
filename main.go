@@ -25,7 +25,7 @@ import (
 
 	"github.com/falcosecurity/falcosidekick-ui/configuration"
 	"github.com/falcosecurity/falcosidekick-ui/internal/api"
-	"github.com/falcosecurity/falcosidekick-ui/internal/database/redis"
+	"github.com/falcosecurity/falcosidekick-ui/internal/database"
 	"github.com/falcosecurity/falcosidekick-ui/internal/models"
 	"github.com/falcosecurity/falcosidekick-ui/internal/utils"
 	validator "github.com/go-playground/validator/v10"
@@ -41,43 +41,55 @@ type CustomValidator struct {
 }
 
 func init() {
+	// User interface configuration
 	addr := utils.GetStringFlagOrEnvParam("a", "FALCOSIDEKICK_UI_ADDR", "0.0.0.0", "Listen Address")
-	redisserver := utils.GetStringFlagOrEnvParam("r", "FALCOSIDEKICK_UI_REDIS_URL", "localhost:6379", "Redis server address")
-	redisusername := utils.GetStringFlagOrEnvParam("y", "FALCOSIDEKICK_UI_REDIS_USERNAME", "", "Redis server username")
-	redispassword := utils.GetStringFlagOrEnvParam("w", "FALCOSIDEKICK_UI_REDIS_PASSWORD", "", "Redis server password")
 	port := utils.GetIntFlagOrEnvParam("p", "FALCOSIDEKICK_UI_PORT", 2802, "Listen Port")
-	ttl := utils.GetStringFlagOrEnvParam("t", "FALCOSIDEKICK_UI_TTL", "0s", "TTL for keys, the format is X<unit>, with unit (s, m, h, d, W, M, y)")
 	version := flag.Bool("v", false, "Print version")
 	dev := utils.GetBoolFlagOrEnvParam("x", "FALCOSIDEKICK_UI_DEV", false, "Allow CORS for development")
 	loglevel := utils.GetStringFlagOrEnvParam("l", "FALCOSIDEKICK_UI_LOGLEVEL", "info", "Log Level")
 	user := utils.GetStringFlagOrEnvParam("u", "FALCOSIDEKICK_UI_USER", "admin:admin", "User in format <login>:<password>")
 	disableauth := utils.GetBoolFlagOrEnvParam("d", "FALCOSIDEKICK_UI_DISABLEAUTH", false, "Disable authentication")
 
+	// Database configuration
+	dbBackend := utils.GetStringFlagOrEnvParam("b", "FALCOSIDEKICK_UI_DATABASE_BACKEND", "redis", "Database backend (redis, postgres)")
+	dbHost := utils.GetStringFlagOrEnvParam("dh", "FALCOSIDEKICK_UI_DB_HOST", "localhost", "Database host for either Redis/PostgreSQL")
+	dbPort := utils.GetIntFlagOrEnvParam("dp", "FALCOSIDEKICK_UI_DB_PORT", 6379, "Database port for either Redis/PostgreSQL")
+	dbName := utils.GetStringFlagOrEnvParam("dn", "FALCOSIDEKICK_UI_DB_NAME", "falco", "Database name for PostgreSQL")
+	dbUsername := utils.GetStringFlagOrEnvParam("dy", "FALCOSIDEKICK_UI_DB_USERNAME", "", "Database username for either Redis/PostgreSQL")
+	dbPassword := utils.GetStringFlagOrEnvParam("dw", "FALCOSIDEKICK_UI_DB_PASSWORD", "", "Database password for either Redis/PostgreSQL")
+	dbTTL := utils.GetStringFlagOrEnvParam("dt", "FALCOSIDEKICK_UI_DB_TTL", "0s", "TTL for Redis keys, the format is X<unit>, with unit (s, m, h, d, W, M, y)")
+
 	flag.Usage = func() {
 		help := `Usage of Falcosidekick-UI:
 -a string
       Listen Address (default "0.0.0.0", environment "FALCOSIDEKICK_UI_ADDR")
+-b string
+      Database backend: "redis" or "postgres" (default "redis", environment "FALCOSIDEKICK_UI_DATABASE_BACKEND")
 -d boolean
       Disable authentication (environment "FALCOSIDEKICK_UI_DISABLEAUTH")
 -l string
       Log level: "debug", "info", "warning", "error" (default "info",  environment "FALCOSIDEKICK_UI_LOGLEVEL")
 -p int
       Listen Port (default "2802", environment "FALCOSIDEKICK_UI_PORT")
--r string
-      Redis server address (default "localhost:6379", environment "FALCOSIDEKICK_UI_REDIS_URL")
--t string
-      TTL for keys, the format is X<unit>,
-      with unit (s, m, h, d, W, M, y)" (default "0", environment "FALCOSIDEKICK_UI_TTL")
 -u string
       User in format <login>:<password> (default "admin:admin", environment "FALCOSIDEKICK_UI_USER")
 -v boolean
       Display version
--w string
-      Redis password (default "", environment "FALCOSIDEKICK_UI_REDIS_PASSWORD")
 -x boolean
       Allow CORS for development (environment "FALCOSIDEKICK_UI_DEV")
--y string
-      Redis username (default "", environment "FALCOSIDEKICK_UI_REDIS_USERNAME")
+-dh string
+	  Database Host for either Redis/PostgreSQL (default "localhost", environment "FALCOSIDEKICK_UI_DB_HOST")
+-dp string
+	  Database Port for Redis/PostgreSQL (default "6379", environment "FALCOSIDEKICK_UI_DB_PORT")
+-dn string
+	  Database Name for PostgreSQL (default "falco", environment "FALCOSIDEKICK_UI_DB_NAME")
+-dy string
+      Database Username for Redis/PostgreSQL (default "", environment "FALCOSIDEKICK_UI_DB_USERNAME")
+-dw string
+      Database Password for Redis/PostgreSQL (default "", environment "FALCOSIDEKICK_UI_DB_PASSWORD")
+-dt string
+      Database TTL for Redis keys, the format is X<unit>,
+      with unit (s, m, h, d, W, M, y)" (default "0", environment "FALCOSIDEKICK_UI_DB_TTL")
 `
 		fmt.Println(help)
 	}
@@ -101,21 +113,33 @@ func init() {
 	}
 	config.ListenAddress = *addr
 	config.ListenPort = *port
-	config.RedisServer = *redisserver
-	config.RedisUsername = *redisusername
-	config.RedisPassword = *redispassword
+
 	config.DevMode = *dev
-	config.TTL = utils.ConvertToSeconds(*ttl)
 	config.LogLevel = *loglevel
 	config.Credentials = *user
 	config.DisableAuth = *disableauth
+
+	config.DatabaseBackend = *dbBackend
+	config.DbHost = *dbHost
+	config.DbPort = *dbPort
+	config.DbName = *dbName
+	config.DbUsername = *dbUsername
+	config.DbPassword = *dbPassword
+	config.DbTTL = utils.ConvertToSeconds(*dbTTL)
 
 	if utils.GetPriortiyInt(config.LogLevel) < 0 {
 		config.LogLevel = "info"
 	}
 
-	client := redis.CreateClient()
-	redis.CreateIndex(client)
+	// Initialize database
+	db, err := database.NewEventDatabase()
+	if err != nil {
+		utils.WriteLog("fatal", "Failed to initialize database: "+err.Error())
+		os.Exit(1)
+	}
+
+	// Store database instance for API handlers
+	models.SetEventDatabase(db)
 	models.CreateOutputs()
 }
 
