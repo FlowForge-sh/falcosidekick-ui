@@ -17,6 +17,7 @@ package mysql
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/falcosecurity/falcosidekick-ui/configuration"
@@ -40,18 +41,18 @@ CREATE TABLE IF NOT EXISTS falco_events (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`
 
-const createIndexSQL = `
-CREATE INDEX idx_falco_events_timestamp_ns ON falco_events(timestamp_ns);
-CREATE INDEX idx_falco_events_timestamp_utc ON falco_events(timestamp_utc);
-CREATE INDEX idx_falco_events_priority ON falco_events(priority);
-CREATE INDEX idx_falco_events_rule ON falco_events(rule(255));
-CREATE INDEX idx_falco_events_source ON falco_events(source);
-CREATE INDEX idx_falco_events_hostname ON falco_events(hostname);
-CREATE INDEX idx_falco_events_uuid ON falco_events(uuid);
--- JSON indexing in MySQL requires generated columns. Example:
--- ALTER TABLE falco_events ADD COLUMN json_rule VARCHAR(255) GENERATED ALWAYS AS (json_unquote(json_extract(json_data, '$.rule'))) STORED;
--- CREATE INDEX idx_falco_events_json_rule ON falco_events(json_rule);
-`
+var createIndexStatements = []string{
+	`CREATE INDEX idx_falco_events_timestamp_ns ON falco_events(timestamp_ns)`,
+	`CREATE INDEX idx_falco_events_timestamp_utc ON falco_events(timestamp_utc)`,
+	`CREATE INDEX idx_falco_events_priority ON falco_events(priority)`,
+	`CREATE INDEX idx_falco_events_rule ON falco_events(rule(255))`,
+	`CREATE INDEX idx_falco_events_source ON falco_events(source)`,
+	`CREATE INDEX idx_falco_events_hostname ON falco_events(hostname)`,
+	`CREATE INDEX idx_falco_events_uuid ON falco_events(uuid)`,
+	// JSON indexing in MySQL requires generated columns. Example:
+	// `ALTER TABLE falco_events ADD COLUMN json_rule VARCHAR(255) GENERATED ALWAYS AS (json_unquote(json_extract(json_data, '$.rule'))) STORED`,
+	// `CREATE INDEX idx_falco_events_json_rule ON falco_events(json_rule)`,
+}
 
 // CreateSchema creates the table and indexes for Falco events
 func CreateSchema(db *sql.DB) error {
@@ -61,14 +62,30 @@ func CreateSchema(db *sql.DB) error {
 		return err
 	}
 
-	// Create indexes
-	if _, err := db.Exec(createIndexSQL); err != nil {
-		utils.WriteLog("error", "Failed to create indexes: "+err.Error())
-		return err
+	// Create indexes one by one
+	for _, indexSQL := range createIndexStatements {
+		if _, err := db.Exec(indexSQL); err != nil {
+			// Check if it's just a "duplicate key" error (index already exists)
+			if !isDuplicateKeyError(err) {
+				utils.WriteLog("error", "Failed to create index: "+err.Error())
+				return err
+			}
+		}
 	}
 
 	utils.WriteLog("info", "MySQL schema created successfully")
 	return nil
+}
+
+// isDuplicateKeyError checks if the error is a MySQL duplicate key error
+func isDuplicateKeyError(err error) bool {
+	if err == nil {
+		return false
+	}
+	errStr := err.Error()
+	return errStr == "Error 1061: Duplicate key name" ||
+		errStr == "Error 1061 (42000): Duplicate key name" ||
+		strings.Contains(errStr, "Duplicate key name")
 }
 
 // CleanupOldEvents removes events older than TTL if configured
