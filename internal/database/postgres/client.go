@@ -32,10 +32,10 @@ func CreateClient() *sql.DB {
 	var connStr string
 	if config.DbPassword == "" {
 		connStr = fmt.Sprintf("host=%s port=%d user=%s dbname=%s sslmode=disable",
-			config.DbHost, config.DbPort, config.DbUsername, config.DbPassword, config.DbTTL)
+			config.DbHost, config.DbPort, config.DbUsername, config.DbName)
 	} else {
 		connStr = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
-			config.DbHost, config.DbPort, config.DbUsername, config.DbPassword, config.DbTTL)
+			config.DbHost, config.DbPort, config.DbUsername, config.DbPassword, config.DbName)
 	}
 
 	var err error

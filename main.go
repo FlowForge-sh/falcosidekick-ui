@@ -40,6 +40,42 @@ type CustomValidator struct {
 	validator *validator.Validate
 }
 
+type dbDefaults struct {
+	host     string
+	port     int
+	name     string
+	username string
+	password string
+	ttl      string
+}
+
+var databaseDefaults = map[string]dbDefaults{
+	"mysql": {
+		host:     "localhost",
+		port:     3306,
+		name:     "falco",
+		username: "root",
+		password: "",
+		ttl:      "0s",
+	},
+	"postgres": {
+		host:     "localhost",
+		port:     5432,
+		name:     "falco",
+		username: "postgres",
+		password: "",
+		ttl:      "0s",
+	},
+	"redis": {
+		host:     "localhost",
+		port:     6379,
+		name:     "",
+		username: "",
+		password: "",
+		ttl:      "0s",
+	},
+}
+
 func init() {
 	// User interface configuration
 	addr := utils.GetStringFlagOrEnvParam("a", "FALCOSIDEKICK_UI_ADDR", "0.0.0.0", "Listen Address")
@@ -52,12 +88,19 @@ func init() {
 
 	// Database configuration
 	dbBackend := utils.GetStringFlagOrEnvParam("b", "FALCOSIDEKICK_UI_DATABASE_BACKEND", "redis", "Database backend (redis, postgres)")
-	dbHost := utils.GetStringFlagOrEnvParam("dh", "FALCOSIDEKICK_UI_DB_HOST", "localhost", "Database host for either Redis/PostgreSQL")
-	dbPort := utils.GetIntFlagOrEnvParam("dp", "FALCOSIDEKICK_UI_DB_PORT", 6379, "Database port for either Redis/PostgreSQL")
-	dbName := utils.GetStringFlagOrEnvParam("dn", "FALCOSIDEKICK_UI_DB_NAME", "falco", "Database name for PostgreSQL")
-	dbUsername := utils.GetStringFlagOrEnvParam("dy", "FALCOSIDEKICK_UI_DB_USERNAME", "", "Database username for either Redis/PostgreSQL")
-	dbPassword := utils.GetStringFlagOrEnvParam("dw", "FALCOSIDEKICK_UI_DB_PASSWORD", "", "Database password for either Redis/PostgreSQL")
-	dbTTL := utils.GetStringFlagOrEnvParam("dt", "FALCOSIDEKICK_UI_DB_TTL", "0s", "TTL for Redis keys, the format is X<unit>, with unit (s, m, h, d, W, M, y)")
+
+	// Lookup defaults (fallback to redis if unknown)
+	defaults, ok := databaseDefaults[strings.ToLower(*dbBackend)]
+	if !ok {
+		defaults = databaseDefaults["redis"]
+	}
+
+	dbHost := utils.GetStringFlagOrEnvParam("dh", "FALCOSIDEKICK_UI_DB_HOST", defaults.host, "Database host")
+	dbPort := utils.GetIntFlagOrEnvParam("dp", "FALCOSIDEKICK_UI_DB_PORT", defaults.port, "Database port")
+	dbName := utils.GetStringFlagOrEnvParam("dn", "FALCOSIDEKICK_UI_DB_NAME", defaults.name, "Database name")
+	dbUsername := utils.GetStringFlagOrEnvParam("dy", "FALCOSIDEKICK_UI_DB_USERNAME", defaults.username, "Database username")
+	dbPassword := utils.GetStringFlagOrEnvParam("dw", "FALCOSIDEKICK_UI_DB_PASSWORD", defaults.password, "Database password")
+	dbTTL := utils.GetStringFlagOrEnvParam("dt", "FALCOSIDEKICK_UI_DB_TTL", defaults.ttl, "TTL for Redis keys")
 
 	flag.Usage = func() {
 		help := `Usage of Falcosidekick-UI:
@@ -143,19 +186,19 @@ func init() {
 	models.CreateOutputs()
 }
 
-// @title          Falcosidekick UI
-// @version        1.0
-// @description    Falcosidekick UI
-// @contact.name   Falco Authors
-// @contact.url    https://github.com/falcosecurity
-// @contact.email  cncf-falco-dev@lists.cncf.io
-// @license.name   Apache 2.0
-// @license.url    http://www.apache.org/licenses/LICENSE-2.0.html
-// @accept         json
-// @produce        json
-// @schemes        http
-// @host           <your-domain>:2802
-// @BasePath       /api/v1
+// @title			Falcosidekick UI
+// @version		1.0
+// @description	Falcosidekick UI
+// @contact.name	Falco Authors
+// @contact.url	https://github.com/falcosecurity
+// @contact.email	cncf-falco-dev@lists.cncf.io
+// @license.name	Apache 2.0
+// @license.url	http://www.apache.org/licenses/LICENSE-2.0.html
+// @accept			json
+// @produce		json
+// @schemes		http
+// @host			<your-domain>:2802
+// @BasePath		/api/v1
 func main() {
 	e := echo.New()
 	v := &CustomValidator{validator: validator.New()}
