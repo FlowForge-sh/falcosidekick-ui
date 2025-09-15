@@ -8,7 +8,7 @@ require (
 	github.com/Issif/redisearch-go v1.1.2-0.20220629142418-f66689e2ff5c
 	github.com/go-playground/validator/v10 v10.15.0
 	github.com/go-sql-driver/mysql v1.9.3
-	github.com/gomodule/redigo v1.8.9
+	github.com/gomodule/redigo v1.9.2
 	github.com/labstack/echo/v4 v4.11.1
 	github.com/lib/pq v1.10.9
 	github.com/swaggo/echo-swagger v1.4.0
