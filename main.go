@@ -76,6 +76,8 @@ var databaseDefaults = map[string]dbDefaults{
 	},
 }
 
+const AddEvent = "add-event"
+
 func init() {
 	// User interface configuration
 	addr := utils.GetStringFlagOrEnvParam("a", "FALCOSIDEKICK_UI_ADDR", "0.0.0.0", "Listen Address")
