@@ -225,7 +225,7 @@ func main() {
 		return c.Redirect(http.StatusPermanentRedirect, "docs/")
 	})
 	e.Static("/*", "frontend/dist").Name = "webui-home"
-	e.POST("/", api.AddEvent).Name = "add-event" // for compatibility with old Falcosidekicks
+	e.POST("/", api.AddEvent).Name = AddEvent // for compatibility with old Falcosidekicks
 
 	apiRoute := e.Group("/api/v1")
 	apiRoute.Use(middleware.BasicAuthWithConfig(middleware.BasicAuthConfig{
@@ -253,7 +253,7 @@ func main() {
 			return false, nil
 		},
 	}))
-	apiRoute.POST("/", api.AddEvent).Name = "add-event"
+	apiRoute.POST("/", api.AddEvent).Name = AddEvent
 	apiRoute.POST("/auth", api.Authenticate).Name = "authenticate"
 	apiRoute.POST("/authenticate", api.Authenticate).Name = "authenticate"
 	apiRoute.GET("/config", api.GetConfiguration).Name = "get-configuration"
@@ -263,7 +263,7 @@ func main() {
 	apiRoute.GET("/outputs", api.GetOutputs).Name = "list-outputs"
 
 	eventsRoute := apiRoute.Group("/events")
-	eventsRoute.POST("/add", api.AddEvent).Name = "add-event"
+	eventsRoute.POST("/add", api.AddEvent).Name = AddEvent
 	eventsRoute.GET("/count", api.CountEvent).Name = "count-events"
 	eventsRoute.GET("/count/:groupby", api.CountByEvent).Name = "count-events-by"
 	eventsRoute.GET("/search", api.Search).Name = "search-keys"
