@@ -147,8 +147,8 @@ func buildWhereClause(args *models.Arguments) (string, []interface{}) {
 		tagConditions := make([]string, len(tags))
 		for i, tag := range tags {
 			tagConditions[i] = fmt.Sprintf("tags ILIKE $%d", paramIndex)
-			params = append(params, "%"+strings.TrimSpace(tag)+"%")
-			paramIndex++
+					   params = append(params, "%"+strings.TrimSpace(tag)+"%")
+					   // paramIndex increment is not needed here
 		}
 		conditions = append(conditions, fmt.Sprintf("(%s)", strings.Join(tagConditions, " OR ")))
 	}

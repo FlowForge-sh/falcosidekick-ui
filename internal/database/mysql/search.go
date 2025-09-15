@@ -29,25 +29,27 @@ import (
 func SearchEvents(db *sql.DB, args *models.Arguments) (models.Results, error) {
 	whereClause, params := buildWhereClause(args)
 
-	// Count query
-	countSQL := fmt.Sprintf("SELECT COUNT(*) FROM falco_events %s", whereClause)
-	var totalCount int64
-	err := db.QueryRow(countSQL, params...).Scan(&totalCount)
-	if err != nil {
-		return models.Results{}, fmt.Errorf("failed to count events: %v", err)
-	}
+       // Count query
+       countQuery := "SELECT COUNT(*) FROM falco_events"
+       if whereClause != "" {
+	       countQuery += " " + whereClause
+       }
+       var totalCount int64
+       err := db.QueryRow(countQuery, params...).Scan(&totalCount)
+       if err != nil {
+	       return models.Results{}, fmt.Errorf("failed to count events: %v", err)
+       }
 
-	// Search query with pagination (LIMIT ? OFFSET ?)
-	searchSQL := fmt.Sprintf(`
-		SELECT json_data FROM falco_events
-		%s
-		ORDER BY timestamp_ns DESC
-		LIMIT ? OFFSET ?
-	`, whereClause)
+       // Search query with pagination (LIMIT ? OFFSET ?)
+       searchQuery := "SELECT json_data FROM falco_events"
+       if whereClause != "" {
+	       searchQuery += " " + whereClause
+       }
+       searchQuery += " ORDER BY timestamp_ns DESC LIMIT ? OFFSET ?"
 
-	params = append(params, args.Limit, args.Page*args.Limit)
+       params = append(params, args.Limit, args.Page*args.Limit)
 
-	rows, err := db.Query(searchSQL, params...)
+       rows, err := db.Query(searchQuery, params...)
 	if err != nil {
 		return models.Results{}, fmt.Errorf("failed to search events: %v", err)
 	}
