@@ -26,7 +26,7 @@ import (
 func CountEvents(db *sql.DB, args *models.Arguments) (models.Results, error) {
 	whereClause, params := buildWhereClause(args)
 
-	countSQL := fmt.Sprintf("SELECT COUNT(*) FROM falco_events %s", whereClause)
+	countSQL := "SELECT COUNT(*) FROM falco_events" + whereClause
 	var totalCount int64
 	err := db.QueryRow(countSQL, params...).Scan(&totalCount)
 	if err != nil {

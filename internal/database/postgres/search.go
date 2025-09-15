@@ -30,7 +30,7 @@ func SearchEvents(db *sql.DB, args *models.Arguments) (models.Results, error) {
 	whereClause, params := buildWhereClause(args)
 
 	// Count query
-	countSQL := fmt.Sprintf("SELECT COUNT(*) FROM falco_events %s", whereClause)
+	countSQL := "SELECT COUNT(*) FROM falco_events" + whereClause
 	var totalCount int64
 	err := db.QueryRow(countSQL, params...).Scan(&totalCount)
 	if err != nil {
@@ -38,12 +38,12 @@ func SearchEvents(db *sql.DB, args *models.Arguments) (models.Results, error) {
 	}
 
 	// Search query with pagination
+	limitParam := len(params) + 1
+	offsetParam := len(params) + 2
 	searchSQL := fmt.Sprintf(`
-		SELECT json_data FROM falco_events 
-		%s 
-		ORDER BY timestamp_ns DESC 
-		LIMIT $%d OFFSET $%d
-	`, whereClause, len(params)+1, len(params)+2)
+		SELECT json_data FROM falco_events %s
+		ORDER BY timestamp_ns DESC
+		LIMIT $%d OFFSET $%d`, whereClause, limitParam, offsetParam) // #nosec G201 - whereClause is built from safe programmatic SQL fragments
 
 	params = append(params, args.Limit, args.Page*args.Limit)
 
@@ -147,8 +147,8 @@ func buildWhereClause(args *models.Arguments) (string, []interface{}) {
 		tagConditions := make([]string, len(tags))
 		for i, tag := range tags {
 			tagConditions[i] = fmt.Sprintf("tags ILIKE $%d", paramIndex)
-					   params = append(params, "%"+strings.TrimSpace(tag)+"%")
-					   // paramIndex increment is not needed here
+			params = append(params, "%"+strings.TrimSpace(tag)+"%")
+			paramIndex++
 		}
 		conditions = append(conditions, fmt.Sprintf("(%s)", strings.Join(tagConditions, " OR ")))
 	}
@@ -159,7 +159,6 @@ func buildWhereClause(args *models.Arguments) (string, []interface{}) {
 			sinceTime := time.Now().UTC().Add(-1 * time.Duration(t) * time.Second)
 			conditions = append(conditions, fmt.Sprintf("timestamp_utc >= $%d", paramIndex))
 			params = append(params, sinceTime)
-			paramIndex++
 		}
 	}
 
