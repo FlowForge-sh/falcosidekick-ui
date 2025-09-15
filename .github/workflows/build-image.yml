@@ -2,6 +2,7 @@ name: build-ci-images
 
 on:
   pull_request:
+  workflow_dispatch:
 
 permissions: {}
 
@@ -38,7 +39,6 @@ jobs:
         run: |
           make goreleaser-snapshot
           docker images
-          docker run falcosecurity/falcosidekick-ui:latest-amd64 -v
-          docker run public.ecr.aws/falcosecurity/falcosidekick-ui:latest-amd64 -v
+          docker run ghcr.io/flowforge-sh/falcosidekick-ui:latest-amd64 -v
         env:
           GOPATH: /home/runner/go

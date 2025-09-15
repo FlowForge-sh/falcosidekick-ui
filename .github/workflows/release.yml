@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "*"
+  workflow_dispatch:
 
 concurrency: release
 
@@ -19,6 +20,7 @@ jobs:
     permissions:
       contents: write # needed to write releases
       id-token: write # needed for keyless signing
+      packages: write # needed for GHCR
 
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
@@ -39,25 +41,19 @@ jobs:
 
       - uses: anchore/sbom-action/download-syft@da167eac915b4e86f08b264dbdbc867b61be6f0c # v0.20.5
 
-      # Push images to DockerHUB
-      - name: Login to Docker Hub
+      # Login to GitHub Container Registry
+      - name: Login to GHCR
         uses: docker/login-action@465a07811f14bebb1938fbed4728c6a1ff8901fc # v2.2.0
         with:
-          username: ${{ secrets.DOCKERHUB_USER }}
-          password: ${{ secrets.DOCKERHUB_SECRET }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Push images to AWS Public ECR
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@a03048d87541d1d9fcf2ecf528a4a65ba9bd7838 # v5.0.0
-        with:
-          role-to-assume: arn:aws:iam::292999226676:role/github_actions-falcosidekick-ui-ecr
-          aws-region: us-east-1
+      - name: Build Docker image for GitHub Container Registry
+        run: docker build -t ghcr.io/flowforge-sh/falcosidekick-ui:${{ github.ref_name }} .
 
-      - name: Login to Amazon ECR
-        id: login-ecr-public
-        uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a7945b076 # v2.0.1
-        with:
-          registry-type: public
+      - name: Push Docker image to GitHub Container Registry
+        run: docker push ghcr.io/flowforge-sh/falcosidekick-ui:${{ github.ref_name }}
 
       - name: Set LDFLAGS
         id: ldflags

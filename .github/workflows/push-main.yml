@@ -14,6 +14,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
+      packages: write
 
     runs-on: ubuntu-latest
 
@@ -44,44 +45,24 @@ jobs:
         run: |
           make goreleaser-snapshot
           docker images
-          docker run falcosecurity/falcosidekick-ui:latest-amd64 -v
-          docker run public.ecr.aws/falcosecurity/falcosidekick-ui:latest-amd64 -v
+          docker run ghcr.io/flowforge-sh/falcosidekick-ui:latest-amd64 -v
         env:
           GOPATH: /home/runner/go
 
-      # Push images to DockerHUB
-      - name: Login to Docker Hub
+      # Login to GitHub Container Registry
+      - name: Login to GHCR
         uses: docker/login-action@465a07811f14bebb1938fbed4728c6a1ff8901fc # v2.2.0
         with:
-          username: ${{ secrets.DOCKERHUB_USER }}
-          password: ${{ secrets.DOCKERHUB_SECRET }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Push images to Dockerhub
+      - name: Push images to GHCR
         run: |
-          docker push falcosecurity/falcosidekick-ui:latest-amd64
-          docker push falcosecurity/falcosidekick-ui:latest-arm64
-          docker push falcosecurity/falcosidekick-ui:latest-armv7
-          docker manifest create --amend falcosecurity/falcosidekick-ui:latest falcosecurity/falcosidekick-ui:latest-amd64 \
-            falcosecurity/falcosidekick-ui:latest-arm64 falcosecurity/falcosidekick-ui:latest-armv7
-          docker manifest push --purge falcosecurity/falcosidekick-ui:latest
+          docker push ghcr.io/flowforge-sh/falcosidekick-ui:latest-amd64
+          docker push ghcr.io/flowforge-sh/falcosidekick-ui:latest-arm64
+          docker push ghcr.io/flowforge-sh/falcosidekick-ui:latest-armv7
+          docker manifest create --amend ghcr.io/flowforge-sh/falcosidekick-ui:latest ghcr.io/flowforge-sh/falcosidekick-ui:latest-amd64 \
+            ghcr.io/flowforge-sh/falcosidekick-ui:latest-arm64 ghcr.io/flowforge-sh/falcosidekick-ui:latest-armv7
+          docker manifest push --purge ghcr.io/flowforge-sh/falcosidekick-ui:latest
 
-      # Push images to AWS Public ECR
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@a03048d87541d1d9fcf2ecf528a4a65ba9bd7838 # v5.0.0
-        with:
-          role-to-assume: arn:aws:iam::292999226676:role/github_actions-falcosidekick-ui-ecr
-          aws-region: us-east-1
-
-      - name: Login to Amazon ECR
-        id: login-ecr-public
-        uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a7945b076 # v2.0.1
-        with:
-          registry-type: public
-
-      - run: |
-          docker push public.ecr.aws/falcosecurity/falcosidekick-ui:latest-amd64
-          docker push public.ecr.aws/falcosecurity/falcosidekick-ui:latest-arm64
-          docker push public.ecr.aws/falcosecurity/falcosidekick-ui:latest-armv7
-          docker manifest create --amend public.ecr.aws/falcosecurity/falcosidekick-ui:latest public.ecr.aws/falcosecurity/falcosidekick-ui:latest-amd64 \
-            public.ecr.aws/falcosecurity/falcosidekick-ui:latest-arm64 public.ecr.aws/falcosecurity/falcosidekick-ui:latest-armv7
-          docker manifest push --purge public.ecr.aws/falcosecurity/falcosidekick-ui:latest
