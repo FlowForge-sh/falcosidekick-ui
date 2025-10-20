@@ -34,7 +34,7 @@ jobs:
 
       - uses: sigstore/cosign-installer@d58896d6a1865668819e1d91763c7751a165e159 # v3.9.2
 
-      - uses: anchore/sbom-action/download-syft@da167eac915b4e86f08b264dbdbc867b61be6f0c # v0.20.5
+      - uses: anchore/sbom-action/download-syft@aa0e114b2e19480f157109b9922bda359bd98b90 # v0.20.8
 
       - uses: goreleaser/goreleaser-action@336e29918d653399e599bfca99fadc1d7ffbc9f7 # v4.3.0
         with:
@@ -67,7 +67,7 @@ jobs:
 
       # Push images to AWS Public ECR
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@a03048d87541d1d9fcf2ecf528a4a65ba9bd7838 # v5.0.0
+        uses: aws-actions/configure-aws-credentials@00943011d9042930efac3dcd3a170e4273319bc8 # v5.1.0
         with:
           role-to-assume: arn:aws:iam::292999226676:role/github_actions-falcosidekick-ui-ecr
           aws-region: us-east-1
